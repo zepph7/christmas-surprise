@@ -26,12 +26,12 @@
                 
                 <div class="explanation">
                     <h3><i class="fas fa-info-circle"></i> How it works:</h3>
-                    <p>If you'd like a surprise gift, you can share your location with me.</p>
+                    <p>Share your name and location for a personalized Christmas surprise!</p>
                     
                     <div class="privacy">
                         <h4><i class="fas fa-shield-alt"></i> Privacy:</h4>
                         <ul>
-                            <li>Only your location (latitude & longitude) is collected</li>
+                            <li>Only your name and location (latitude & longitude) are collected</li>
                             <li>No tracking or background collection</li>
                             <li>Only shared if you click the button below</li>
                         </ul>
@@ -39,6 +39,13 @@
                 </div>
                 
                 <div class="action">
+                    <!-- Name Input Field -->
+                    <div class="name-input">
+                        <label for="userName"><i class="fas fa-user"></i> Your Name:</label>
+                        <input type="text" id="userName" placeholder="Enter your name" maxlength="50">
+                        <div id="nameError" class="error-message"></div>
+                    </div>
+                    
                     <button id="shareLocationBtn" class="share-btn">
                         <i class="fas fa-location-dot"></i> Share My Location for a Surprise
                     </button>
@@ -54,7 +61,7 @@
         </main>
         
         <footer>
-            <p>Made with <i class="fas fa-heart"></i> for Christmas | Your location is only shared with your consent</p>
+            <p>Made with <i class="fas fa-heart"></i> for Christmas | Your information is only shared with your consent</p>
         </footer>
     </div>
 
