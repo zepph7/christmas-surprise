@@ -1,131 +1,91 @@
-// Festive Christmas Location Sharing App
+// Simple Christmas Location Sharing
 document.addEventListener('DOMContentLoaded', function() {
-    const shareLocationBtn = document.getElementById('shareLocationBtn');
-    const statusMessage = document.getElementById('statusMessage');
-    const coordinatesDisplay = document.getElementById('coordinates');
+    const shareBtn = document.getElementById('shareLocationBtn');
+    const statusMsg = document.getElementById('statusMessage');
+    const coordsDisplay = document.getElementById('coordinates');
     
-    // ⭐ YOUR FORMSPREE FORM ID (from your Formspree dashboard) ⭐
-    const FORMSPREE_FORM_ID = "mgoeyjon"; // This is your Form ID
+    // Your Formspree Form ID
+    const FORMSPREE_ID = "mgoeyjon";
     
-    // Christmas messages
-    const christmasMessages = {
-        success: [
-            "Ho Ho Ho! Thank you for sharing your location! 🎅",
-            "Christmas magic is on its way! Your surprise is being planned! 🎄",
-            "Your location has been received! Get ready for a festive surprise! 🎁"
-        ],
-        error: [
-            "That's okay! The Christmas spirit is in our hearts, not our locations! 🎄",
-            "No worries! The magic of Christmas is everywhere! ✨",
-            "That's perfectly fine! Wishing you a wonderful Christmas anyway! 🎅"
-        ]
-    };
-    
-    function getRandomMessage(messageArray) {
-        return messageArray[Math.floor(Math.random() * messageArray.length)];
+    function showStatus(text, type) {
+        statusMsg.textContent = text;
+        statusMsg.className = `status-message ${type}`;
+        statusMsg.style.display = 'block';
     }
     
-    function updateStatus(message, type) {
-        statusMessage.textContent = message;
-        statusMessage.className = `status-message ${type}`;
-        statusMessage.style.display = 'block';
-    }
-    
-    function showCoordinates(lat, lon) {
-        coordinatesDisplay.innerHTML = `
-            <strong>Coordinates shared:</strong><br>
+    function showCoords(lat, lon) {
+        coordsDisplay.innerHTML = `
+            <strong>Location shared:</strong><br>
             Latitude: ${lat.toFixed(6)}<br>
-            Longitude: ${lon.toFixed(6)}<br>
-            <small><em>This data was sent securely to my Formspree backend</em></small>
+            Longitude: ${lon.toFixed(6)}
         `;
-        coordinatesDisplay.classList.add('show');
+        coordsDisplay.classList.add('show');
     }
     
-    async function sendCoordinatesToBackend(latitude, longitude) {
-        const formData = {
-            latitude: latitude,
-            longitude: longitude,
+    async function sendToBackend(lat, lon) {
+        const data = {
+            latitude: lat,
+            longitude: lon,
             timestamp: new Date().toISOString(),
-            purpose: "Christmas surprise delivery",
-            userAgent: navigator.userAgent,
-            _subject: "🎁 Christmas Surprise Location Received!",
-            _replyto: "christmas@zepph7.com" // Optional: add your email to get replies
+            _subject: "🎁 Christmas Location Received!"
         };
         
         try {
-            // Using YOUR Formspree endpoint
-            const response = await fetch(`https://formspree.io/f/${FORMSPREE_FORM_ID}`, {
+            const response = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(data)
             });
             
-            if (response.ok) {
-                console.log('✅ Location sent to Formspree successfully!');
-                return true;
-            } else {
-                const errorText = await response.text();
-                console.error('❌ Formspree error:', errorText);
-                return false;
-            }
+            return response.ok;
         } catch (error) {
-            console.error('❌ Network error:', error);
+            console.error('Error:', error);
             return false;
         }
     }
     
     function getLocation() {
         if (!navigator.geolocation) {
-            updateStatus("Geolocation not supported by your browser. Merry Christmas! 🎄", "error");
+            showStatus("Your browser doesn't support location sharing. Merry Christmas! 🎄", "error");
             return;
         }
         
-        updateStatus("Asking for location permission... Please allow if prompted.", "info");
+        showStatus("Please allow location access...", "info");
         
         navigator.geolocation.getCurrentPosition(
-            async function(position) {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
+            async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
                 
-                showCoordinates(lat, lon);
-                updateStatus("Sending location to Santa's workshop... 🎅", "info");
+                showCoords(lat, lon);
+                showStatus("Sending location...", "info");
                 
-                const sendSuccess = await sendCoordinatesToBackend(lat, lon);
+                const sent = await sendToBackend(lat, lon);
                 
-                if (sendSuccess) {
-                    updateStatus(getRandomMessage(christmasMessages.success), "success");
-                    shareLocationBtn.disabled = true;
-                    shareLocationBtn.innerHTML = '<i class="fas fa-check-circle"></i> Location Shared! Thank you! 🎅';
-                    shareLocationBtn.style.background = 'linear-gradient(to bottom, #4CAF50, #2E7D32)';
+                if (sent) {
+                    showStatus("Thank you! Your surprise is on its way! 🎅", "success");
+                    shareBtn.disabled = true;
+                    shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Location Shared!';
+                    shareBtn.style.background = '#4CAF50';
                 } else {
-                    updateStatus("Location saved locally! 🎄", "success");
-                    shareLocationBtn.disabled = true;
-                    shareLocationBtn.innerHTML = '<i class="fas fa-check-circle"></i> Location Saved! 🎄';
-                    shareLocationBtn.style.background = 'linear-gradient(to bottom, #4CAF50, #2E7D32)';
+                    showStatus("Location saved! 🎄", "success");
+                    shareBtn.disabled = true;
+                    shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Location Saved';
                 }
             },
-            function(error) {
-                let errorMessage;
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        errorMessage = "You chose not to share your location. " + getRandomMessage(christmasMessages.error);
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        errorMessage = "Location information is unavailable. " + getRandomMessage(christmasMessages.error);
-                        break;
-                    case error.TIMEOUT:
-                        errorMessage = "The request timed out. " + getRandomMessage(christmasMessages.error);
-                        break;
-                    default:
-                        errorMessage = "An error occurred. " + getRandomMessage(christmasMessages.error);
-                        break;
+            (error) => {
+                let msg = "Location not shared. Merry Christmas anyway! 🎄";
+                
+                if (error.code === error.PERMISSION_DENIED) {
+                    msg = "No problem! Location not shared. Merry Christmas! 🎄";
                 }
-                updateStatus(errorMessage, "error");
-                shareLocationBtn.innerHTML = '<i class="fas fa-heart"></i> That\'s Okay - Merry Christmas! 🎄';
-                shareLocationBtn.style.background = 'linear-gradient(to bottom, #757575, #424242)';
+                
+                showStatus(msg, "error");
+                shareBtn.innerHTML = '<i class="fas fa-heart"></i> That\'s Okay - Merry Christmas!';
+                shareBtn.style.background = '#666';
             },
             {
                 enableHighAccuracy: true,
@@ -135,31 +95,53 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
     
-    shareLocationBtn.addEventListener('click', function() {
-        statusMessage.style.display = 'none';
-        coordinatesDisplay.classList.remove('show');
+    shareBtn.addEventListener('click', function() {
+        statusMsg.style.display = 'none';
+        coordsDisplay.classList.remove('show');
         getLocation();
     });
     
-    // Festive effects
-    function addFestiveEffects() {
-        const stars = document.querySelectorAll('.fa-star');
-        stars.forEach((star, index) => {
-            star.style.animation = `twinkle ${2 + index * 0.5}s infinite alternate`;
-        });
-        
-        const snowflakes = document.querySelector('.snowflakes');
-        let flakeCount = 12;
-        snowflakes.innerHTML = '';
-        for (let i = 0; i < flakeCount; i++) {
-            const flake = document.createElement('span');
-            flake.textContent = '❄';
-            flake.style.animation = `twinkle ${1 + Math.random() * 2}s infinite alternate`;
-            flake.style.animationDelay = `${Math.random() * 2}s`;
-            flake.style.margin = '0 5px';
-            snowflakes.appendChild(flake);
-        }
+    // Add subtle snow effect
+    const snowContainer = document.createElement('div');
+    snowContainer.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: -1;
+    `;
+    document.body.appendChild(snowContainer);
+    
+    // Add a few snowflakes
+    for (let i = 0; i < 8; i++) {
+        const flake = document.createElement('div');
+        flake.innerHTML = '❄';
+        flake.style.cssText = `
+            position: absolute;
+            font-size: 20px;
+            opacity: ${0.3 + Math.random() * 0.3};
+            animation: fall ${3 + Math.random() * 5}s linear infinite;
+            animation-delay: ${Math.random() * 5}s;
+            left: ${Math.random() * 100}%;
+        `;
+        snowContainer.appendChild(flake);
     }
     
-    addFestiveEffects();
+    // Add CSS for snow animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fall {
+            from {
+                transform: translateY(-50px) rotate(0deg);
+                opacity: 0.8;
+            }
+            to {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
 });
