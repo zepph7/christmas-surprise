@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Christmas Surprise 🎄</title>
+    <title>Christmas Surprise 🎁</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,88 +13,48 @@
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-star"></i> Merry Christmas <i class="fas fa-star"></i></h1>
-            <div class="snowflakes">❄</div>
+            <h1>🎄 Merry Christmas! 🎄</h1>
         </header>
         
         <main>
-            <section class="message-section">
-                <div class="christmas-card">
-                    <div class="card-header">
-                        <h2><i class="fas fa-gift"></i> A Special Christmas Surprise</h2>
-                    </div>
-                    <div class="card-body">
-                        <p class="intro">Hello my dear friend! 🎅</p>
-                        <p>This Christmas season, I'd love to give you a special surprise gift before the year ends!</p>
-                        
-                        <div class="explanation">
-                            <h3><i class="fas fa-info-circle"></i> How This Works:</h3>
-                            <p>If you'd like to receive a surprise, you can choose to share your <strong>current location</strong> with me.</p>
-                            
-                            <div class="data-info">
-                                <h4><i class="fas fa-shield-alt"></i> What Data is Collected:</h4>
-                                <ul>
-                                    <li><i class="fas fa-map-marker-alt"></i> <strong>Latitude & Longitude</strong> - Your approximate location coordinates</li>
-                                    <li><i class="fas fa-clock"></i> <strong>Timestamp</strong> - When you shared your location</li>
-                                </ul>
-                                <p class="note">This is the <strong>only</strong> data collected. No tracking, no background collection.</p>
-                            </div>
-                            
-                            <div class="purpose">
-                                <h4><i class="fas fa-gift"></i> Why This Data is Collected:</h4>
-                                <p>Your location helps me know where to deliver your surprise gift! Once I have your coordinates, I'll plan a special Christmas surprise just for you.</p>
-                            </div>
-                            
-                            <div class="consent">
-                                <h4><i class="fas fa-hand-paper"></i> Your Consent Matters:</h4>
-                                <p>Your location will <strong>only</strong> be shared if you explicitly click the button below. You can decline with no pressure at all!</p>
-                            </div>
-                        </div>
-                        
-                        <div class="action-area">
-                            <div class="location-request">
-                                <button id="shareLocationBtn" class="share-btn">
-                                    <i class="fas fa-location-dot"></i> Share my location for a surprise 🎁
-                                </button>
-                                <p class="btn-note">Clicking this will ask for your browser permission to access location</p>
-                            </div>
-                            
-                            <div class="status-area">
-                                <div id="statusMessage" class="status-message"></div>
-                                <div id="coordinates" class="coordinates"></div>
-                            </div>
-                            
-                            <div class="fallback-message">
-                                <p>If you'd prefer not to share your location, that's completely okay! <span class="warm">🎄 Wishing you a warm and wonderful Christmas season! 🎄</span></p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <p><i class="fas fa-heart"></i> With Christmas cheer, Your Friend</p>
+            <div class="card">
+                <h2>🎁 A Christmas Surprise</h2>
+                
+                <p class="greeting">Hello my friend!</p>
+                
+                <p>I'd love to give you a special Christmas gift before the year ends!</p>
+                
+                <div class="explanation">
+                    <h3><i class="fas fa-info-circle"></i> How it works:</h3>
+                    <p>If you'd like a surprise gift, you can share your location with me.</p>
+                    
+                    <div class="privacy">
+                        <h4><i class="fas fa-shield-alt"></i> Privacy:</h4>
+                        <ul>
+                            <li>Only your location (latitude & longitude) is collected</li>
+                            <li>No tracking or background collection</li>
+                            <li>Only shared if you click the button below</li>
+                        </ul>
                     </div>
                 </div>
-            </section>
-            
-            <section class="privacy-section">
-                <div class="privacy-card">
-                    <h3><i class="fas fa-user-shield"></i> Privacy Promise</h3>
-                    <ul>
-                        <li><i class="fas fa-check-circle"></i> Your location is only accessed with explicit consent</li>
-                        <li><i class="fas fa-check-circle"></i> No data is collected without your permission</li>
-                        <li><i class="fas fa-check-circle"></i> Your location is used only for delivering your surprise</li>
-                        <li><i class="fas fa-check-circle"></i> No tracking or background data collection</li>
-                    </ul>
+                
+                <div class="action">
+                    <button id="shareLocationBtn" class="share-btn">
+                        <i class="fas fa-location-dot"></i> Share My Location for a Surprise
+                    </button>
+                    
+                    <div class="status-area">
+                        <div id="statusMessage" class="status-message"></div>
+                        <div id="coordinates" class="coordinates"></div>
+                    </div>
+                    
+                    <p class="fallback">If you prefer not to share, that's completely okay! Merry Christmas! 🎅</p>
                 </div>
-            </section>
+            </div>
         </main>
         
         <footer>
-            <p>Made with <i class="fas fa-heart"></i> for Christmas 2023 | This page collects data only with your explicit consent</p>
-            <div class="decoration">
-                <span class="holly">🎄</span>
-                <span class="holly">🎅</span>
-                <span class="holly">🦌</span>
-            </div>
+            <p>Made with <i class="fas fa-heart"></i> for Christmas | Your location is only shared with your consent</p>
         </footer>
     </div>
 
