@@ -355,3 +355,262 @@ footer i {
         padding: 12px;
     }
 }
+/* Location fallback styles */
+.location-fallback {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.location-fallback label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--christmas-green);
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+
+.location-fallback label i {
+    margin-right: 8px;
+    color: var(--christmas-red);
+}
+
+.location-fallback input {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+.location-fallback input:focus {
+    outline: none;
+    border-color: var(--christmas-gold);
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.2);
+}
+
+/* Update button styling */
+.share-btn {
+    background: linear-gradient(135deg, var(--christmas-green), #2e7d32);
+    /* Changed from red to green for gift theme */
+}
+
+/* Celebration Animations */
+@keyframes floatUp {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatDown {
+    0% {
+        transform: translateY(-100px) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatLeft {
+    0% {
+        transform: translateX(100vw) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(-100px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes floatRight {
+    0% {
+        transform: translateX(-100px) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(100vw) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes sparkle {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
+@keyframes confettiRain {
+    0% {
+        transform: translateY(-100px) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(var(--rotation));
+        opacity: 0;
+    }
+}
+
+/* Celebration elements */
+.celebration-particle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    font-size: 24px;
+}
+
+.celebration-sparkle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 999;
+    width: 8px;
+    height: 8px;
+    background: gold;
+    border-radius: 50%;
+    animation: sparkle 1s ease-in-out infinite;
+}
+
+.confetti {
+    position: fixed;
+    width: 15px;
+    height: 15px;
+    pointer-events: none;
+    z-index: 1001;
+    opacity: 0;
+}
+
+/* Success message animation */
+.status-message.success {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Button celebration effect */
+.share-btn.celebrating {
+    animation: bounce 0.5s ease-in-out 3, pulse 2s infinite;
+    background: linear-gradient(135deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff9ff3);
+    background-size: 400% 400%;
+    animation: gradientShift 3s ease infinite, bounce 0.5s ease-in-out 3;
+}
+
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Gift box animation */
+.gift-box {
+    position: fixed;
+    font-size: 40px;
+    z-index: 1002;
+    animation: bounce 1s ease-in-out infinite;
+}
+
+/* Overlay for celebration */
+.celebration-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 998;
+    background: radial-gradient(circle at var(--x) var(--y), rgba(255,215,0,0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+/* Fireworks */
+.firework {
+    position: fixed;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 997;
+    box-shadow: 0 0 10px 5px currentColor;
+}
+
+/* Floating text */
+.floating-text {
+    position: fixed;
+    color: var(--christmas-red);
+    font-weight: bold;
+    font-size: 24px;
+    font-family: 'Mountains of Christmas', cursive;
+    pointer-events: none;
+    z-index: 1003;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
