@@ -1,19 +1,66 @@
-// Simple Christmas Location Sharing
+// Christmas Surprise Form with Name and Location
 document.addEventListener('DOMContentLoaded', function() {
     const shareBtn = document.getElementById('shareLocationBtn');
+    const userNameInput = document.getElementById('userName');
+    const nameError = document.getElementById('nameError');
     const statusMsg = document.getElementById('statusMessage');
     const coordsDisplay = document.getElementById('coordinates');
     
-    // Your Formspree Form ID
-    const FORMSPREE_ID = "mgoeyjon";
+    // Formspree Configuration
+    const FORMSPREE_ENDPOINT = "https://formspree.io/f/mgoeyjon";
     
-    // Track if we're currently getting location
-    let isGettingLocation = false;
+    // Track if we're currently processing
+    let isProcessing = false;
     
+    // Validation functions
+    function validateName(name) {
+        name = name.trim();
+        if (!name) {
+            return "Please enter your name";
+        }
+        if (name.length < 2) {
+            return "Name should be at least 2 characters";
+        }
+        if (name.length > 50) {
+            return "Name should be less than 50 characters";
+        }
+        if (!/^[a-zA-Z\s\-']+$/.test(name)) {
+            return "Please enter a valid name (letters and spaces only)";
+        }
+        return null; // No error
+    }
+    
+    function updateNameValidation() {
+        const name = userNameInput.value.trim();
+        const error = validateName(name);
+        
+        if (error) {
+            userNameInput.classList.add('error');
+            userNameInput.classList.remove('success');
+            nameError.textContent = error;
+            return false;
+        } else {
+            userNameInput.classList.remove('error');
+            userNameInput.classList.add('success');
+            nameError.textContent = '';
+            return true;
+        }
+    }
+    
+    // Status display functions
     function showStatus(text, type) {
         statusMsg.textContent = text;
         statusMsg.className = `status-message ${type}`;
         statusMsg.style.display = 'block';
+        
+        // Auto-hide success messages after 5 seconds
+        if (type === 'success') {
+            setTimeout(() => {
+                if (statusMsg.className.includes('success')) {
+                    statusMsg.style.display = 'none';
+                }
+            }, 5000);
+        }
     }
     
     function showCoords(lat, lon) {
@@ -25,123 +72,155 @@ document.addEventListener('DOMContentLoaded', function() {
         coordsDisplay.classList.add('show');
     }
     
-    async function sendToBackend(lat, lon) {
-        const data = {
-            latitude: lat,
-            longitude: lon,
-            timestamp: new Date().toISOString(),
-            _subject: "🎁 Christmas Location Received!"
-        };
+    // Formspree submission
+    async function submitToFormspree(name, lat, lon) {
+        // Prepare form data as Formspree expects
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('latitude', lat);
+        formData.append('longitude', lon);
+        formData.append('timestamp', new Date().toISOString());
+        formData.append('_subject', '🎄 Christmas Surprise Request');
+        formData.append('_format', 'plain'); // Get plain text email
         
         try {
-            const response = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+            const response = await fetch(FORMSPREE_ENDPOINT, {
                 method: 'POST',
+                body: formData,
                 headers: {
-                    'Content-Type': 'application/json',
                     'Accept': 'application/json'
-                },
-                body: JSON.stringify(data)
+                }
             });
             
-            return response.ok;
+            if (response.ok) {
+                return { success: true, message: 'Submission successful!' };
+            } else {
+                const errorData = await response.json();
+                return { 
+                    success: false, 
+                    message: errorData.error || 'Submission failed' 
+                };
+            }
         } catch (error) {
-            console.error('Error:', error);
-            return false;
+            console.error('Network error:', error);
+            return { 
+                success: false, 
+                message: 'Network error. Please try again.' 
+            };
         }
     }
     
-    function getLocation() {
-        if (isGettingLocation) return; // Prevent multiple clicks
-        
+    // Get user's location
+    function getLocation(name) {
         if (!navigator.geolocation) {
-            showStatus("Your browser doesn't support location sharing. Merry Christmas! 🎄", "error");
+            showStatus("Your browser doesn't support location sharing.", "error");
             return;
         }
         
-        isGettingLocation = true;
+        isProcessing = true;
         shareBtn.disabled = true;
         shareBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
-        
         showStatus("Getting your location...", "info");
         
-        // Check if permission was already granted by trying to get high accuracy quickly
         navigator.geolocation.getCurrentPosition(
-            // Success callback - permission granted or already had permission
-            async (pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
                 
                 showCoords(lat, lon);
-                showStatus("Sending location to Santa... 🎅", "info");
+                showStatus("Sending your Christmas wish to Santa... 🎅", "info");
                 
-                const sent = await sendToBackend(lat, lon);
+                // Submit to Formspree
+                const result = await submitToFormspree(name, lat, lon);
                 
-                if (sent) {
-                    showStatus("Thank you! Your surprise is on its way! 🎅", "success");
-                    shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Location Shared!';
+                if (result.success) {
+                    showStatus(`Thank you ${name}! Your Christmas surprise is on its way! 🎁`, "success");
+                    shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Request Sent!';
                     shareBtn.style.background = '#4CAF50';
+                    
+                    // Reset form after success
+                    setTimeout(() => {
+                        userNameInput.value = '';
+                        userNameInput.classList.remove('success');
+                        coordsDisplay.classList.remove('show');
+                    }, 3000);
                 } else {
-                    showStatus("Location saved locally! 🎄", "success");
-                    shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Location Saved';
+                    showStatus(`Oops! ${result.message}`, "error");
+                    shareBtn.innerHTML = '<i class="fas fa-location-dot"></i> Try Again';
+                    shareBtn.disabled = false;
+                    isProcessing = false;
                 }
-                
-                isGettingLocation = false;
             },
-            // Error callback - permission denied or error
             (error) => {
-                let msg = "";
-                let btnText = '<i class="fas fa-heart"></i> That\'s Okay - Merry Christmas!';
+                let errorMessage = "Couldn't get your location. ";
                 
                 switch(error.code) {
                     case error.PERMISSION_DENIED:
-                        msg = "Location access was denied. No problem! Merry Christmas! 🎄";
+                        errorMessage += "Please allow location access to receive your surprise.";
                         break;
                     case error.POSITION_UNAVAILABLE:
-                        msg = "Location information is unavailable. Merry Christmas! 🎄";
+                        errorMessage += "Location service is unavailable.";
                         break;
                     case error.TIMEOUT:
-                        msg = "Location request timed out. Merry Christmas! 🎄";
+                        errorMessage += "Location request timed out.";
                         break;
                     default:
-                        msg = "Couldn't get location. Merry Christmas anyway! 🎄";
-                        break;
+                        errorMessage += "Please try again.";
                 }
                 
-                showStatus(msg, "error");
-                shareBtn.innerHTML = btnText;
-                shareBtn.style.background = '#666';
+                showStatus(errorMessage, "error");
+                shareBtn.innerHTML = '<i class="fas fa-location-dot"></i> Try Again';
                 shareBtn.disabled = false;
-                isGettingLocation = false;
+                isProcessing = false;
             },
-            // Options - faster timeout for previously granted permissions
             {
                 enableHighAccuracy: true,
-                timeout: 8000, // Reduced from 10000 to 8000
-                maximumAge: 30000 // Use cached location if less than 30 seconds old
+                timeout: 10000,
+                maximumAge: 60000
             }
         );
         
-        // Add a fallback timeout in case the geolocation API hangs
+        // Timeout fallback
         setTimeout(() => {
-            if (isGettingLocation) {
-                showStatus("Taking longer than expected...", "info");
+            if (isProcessing && !coordsDisplay.classList.contains('show')) {
+                showStatus("Taking a bit longer than usual...", "info");
             }
         }, 5000);
     }
     
+    // Event Listeners
+    userNameInput.addEventListener('input', updateNameValidation);
+    userNameInput.addEventListener('blur', updateNameValidation);
+    
     shareBtn.addEventListener('click', function() {
-        if (isGettingLocation) return;
+        if (isProcessing) return;
         
+        // Hide previous messages
         statusMsg.style.display = 'none';
         coordsDisplay.classList.remove('show');
-        getLocation();
+        
+        // Validate name
+        const name = userNameInput.value.trim();
+        const nameError = validateName(name);
+        
+        if (nameError) {
+            showStatus(nameError, "error");
+            userNameInput.focus();
+            return;
+        }
+        
+        // Start the process
+        getLocation(name);
     });
     
-    // Improve button styling for disabled state
-    const originalBtnHTML = shareBtn.innerHTML;
-    const originalBtnStyle = shareBtn.style.cssText;
+    // Allow form submission with Enter key
+    userNameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !isProcessing) {
+            shareBtn.click();
+        }
+    });
     
-    // Add subtle snow effect
+    // Christmas snow effect (keeping your existing snow code)
     const snowContainer = document.createElement('div');
     snowContainer.style.cssText = `
         position: fixed;
@@ -154,7 +233,6 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
     document.body.appendChild(snowContainer);
     
-    // Add a few snowflakes
     for (let i = 0; i < 8; i++) {
         const flake = document.createElement('div');
         flake.innerHTML = '❄';
@@ -169,7 +247,6 @@ document.addEventListener('DOMContentLoaded', function() {
         snowContainer.appendChild(flake);
     }
     
-    // Add CSS for snow animation
     const style = document.createElement('style');
     style.textContent = `
         @keyframes fall {
