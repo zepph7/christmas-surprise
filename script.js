@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Track if we're currently processing
     let isProcessing = false;
+    let geolocationTimeout;
     
     // Validation functions
     function validateName(name) {
@@ -24,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (name.length > 50) {
             return "Name should be less than 50 characters";
         }
-        if (!/^[a-zA-Z\s\-']+$/.test(name)) {
+        if (!/^[a-zA-Z\s\-'.]+$/.test(name)) {
             return "Please enter a valid name (letters and spaces only)";
         }
         return null; // No error
@@ -73,15 +74,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Formspree submission
-    async function submitToFormspree(name, lat, lon) {
+    async function submitToFormspree(name, lat = null, lon = null) {
         // Prepare form data as Formspree expects
         const formData = new FormData();
         formData.append('name', name);
-        formData.append('latitude', lat);
-        formData.append('longitude', lon);
+        
+        if (lat && lon) {
+            formData.append('latitude', lat);
+            formData.append('longitude', lon);
+            formData.append('has_location', 'true');
+        } else {
+            formData.append('has_location', 'false');
+            formData.append('latitude', 'Not provided');
+            formData.append('longitude', 'Not provided');
+        }
+        
         formData.append('timestamp', new Date().toISOString());
         formData.append('_subject', '🎄 Christmas Surprise Request');
-        formData.append('_format', 'plain'); // Get plain text email
+        formData.append('_format', 'plain');
+        formData.append('_replyto', 'noreply@christmassurprise.com');
         
         try {
             const response = await fetch(FORMSPREE_ENDPOINT, {
@@ -110,7 +121,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Get user's location
+    // Reset button state
+    function resetButton() {
+        isProcessing = false;
+        shareBtn.disabled = false;
+        shareBtn.innerHTML = '<i class="fas fa-location-dot"></i> Share My Location for a Surprise';
+        shareBtn.style.background = '';
+        
+        if (geolocationTimeout) {
+            clearTimeout(geolocationTimeout);
+            geolocationTimeout = null;
+        }
+    }
+    
+    // Get user's location with better timeout handling
     function getLocation(name) {
         if (!navigator.geolocation) {
             showStatus("Your browser doesn't support location sharing.", "error");
@@ -120,15 +144,44 @@ document.addEventListener('DOMContentLoaded', function() {
         isProcessing = true;
         shareBtn.disabled = true;
         shareBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
-        showStatus("Getting your location...", "info");
+        showStatus("Getting your location... This might take a moment.", "info");
+        
+        // Clear any existing timeout
+        if (geolocationTimeout) {
+            clearTimeout(geolocationTimeout);
+        }
+        
+        // Set a timeout for the entire geolocation process
+        geolocationTimeout = setTimeout(() => {
+            if (isProcessing) {
+                handleLocationError({
+                    code: 3,
+                    message: 'Location request is taking longer than expected'
+                }, name);
+            }
+        }, 15000); // 15 second total timeout
+        
+        // Try to get location with different strategies
+        const geolocationOptions = {
+            enableHighAccuracy: true,  // Try for best accuracy first
+            timeout: 10000,           // 10 seconds for high accuracy attempt
+            maximumAge: 300000        // Accept cached location up to 5 minutes old
+        };
         
         navigator.geolocation.getCurrentPosition(
             async (position) => {
+                // Clear the timeout since we got a response
+                if (geolocationTimeout) {
+                    clearTimeout(geolocationTimeout);
+                    geolocationTimeout = null;
+                }
+                
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
                 
                 showCoords(lat, lon);
-                showStatus("Sending your Christmas wish to Santa... 🎅", "info");
+                showStatus(`Found you! Accuracy: ${Math.round(accuracy)} meters. Sending to Santa... 🎅`, "info");
                 
                 // Submit to Formspree
                 const result = await submitToFormspree(name, lat, lon);
@@ -143,49 +196,68 @@ document.addEventListener('DOMContentLoaded', function() {
                         userNameInput.value = '';
                         userNameInput.classList.remove('success');
                         coordsDisplay.classList.remove('show');
+                        resetButton();
                     }, 3000);
                 } else {
-                    showStatus(`Oops! ${result.message}`, "error");
-                    shareBtn.innerHTML = '<i class="fas fa-location-dot"></i> Try Again';
-                    shareBtn.disabled = false;
-                    isProcessing = false;
+                    showStatus(`Form submitted but: ${result.message}`, "info");
+                    shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Name Submitted';
+                    shareBtn.style.background = '#4CAF50';
+                    setTimeout(resetButton, 3000);
                 }
             },
             (error) => {
-                let errorMessage = "Couldn't get your location. ";
-                
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        errorMessage += "Please allow location access to receive your surprise.";
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        errorMessage += "Location service is unavailable.";
-                        break;
-                    case error.TIMEOUT:
-                        errorMessage += "Location request timed out.";
-                        break;
-                    default:
-                        errorMessage += "Please try again.";
+                // Clear the timeout since we got an error
+                if (geolocationTimeout) {
+                    clearTimeout(geolocationTimeout);
+                    geolocationTimeout = null;
                 }
                 
-                showStatus(errorMessage, "error");
-                shareBtn.innerHTML = '<i class="fas fa-location-dot"></i> Try Again';
-                shareBtn.disabled = false;
-                isProcessing = false;
+                handleLocationError(error, name);
             },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 60000
-            }
+            geolocationOptions
         );
+    }
+    
+    // Handle location errors gracefully
+    async function handleLocationError(error, name) {
+        let errorMessage = "";
+        let showRetryOption = true;
         
-        // Timeout fallback
-        setTimeout(() => {
-            if (isProcessing && !coordsDisplay.classList.contains('show')) {
-                showStatus("Taking a bit longer than usual...", "info");
-            }
-        }, 5000);
+        switch(error.code) {
+            case 1: // PERMISSION_DENIED
+                errorMessage = "📍 Location access was denied. We'll still send your name to Santa!";
+                showRetryOption = false;
+                break;
+            case 2: // POSITION_UNAVAILABLE
+                errorMessage = "📍 Location service is unavailable. We'll still send your name to Santa!";
+                break;
+            case 3: // TIMEOUT
+                errorMessage = "📍 Location request timed out. We'll still send your name to Santa!";
+                break;
+            default:
+                errorMessage = "📍 Couldn't get location. We'll still send your name to Santa!";
+                break;
+        }
+        
+        showStatus(errorMessage, "warning");
+        
+        // Even without location, submit the name
+        const result = await submitToFormspree(name, null, null);
+        
+        if (result.success) {
+            showStatus(`Thank you ${name}! Santa has your name! 🎅`, "success");
+            shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Name Submitted!';
+            shareBtn.style.background = '#4CAF50';
+            
+            setTimeout(() => {
+                userNameInput.value = '';
+                userNameInput.classList.remove('success');
+                resetButton();
+            }, 3000);
+        } else {
+            showStatus("Couldn't submit. Please try again.", "error");
+            resetButton();
+        }
     }
     
     // Event Listeners
@@ -220,7 +292,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Christmas snow effect (keeping your existing snow code)
+    // Add location troubleshooting tips
+    const troubleshootingTips = document.createElement('div');
+    troubleshootingTips.className = 'troubleshooting';
+    troubleshootingTips.innerHTML = `
+        <details style="margin-top: 20px; background: #f0f8ff; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+            <summary style="font-weight: bold; cursor: pointer; color: var(--christmas-green);">
+                <i class="fas fa-question-circle"></i> Location not working?
+            </summary>
+            <div style="margin-top: 10px; font-size: 0.9rem;">
+                <p><strong>Try these tips:</strong></p>
+                <ol style="margin-left: 20px;">
+                    <li>Make sure location/GPS is enabled on your device</li>
+                    <li>Check browser permissions (allow location access)</li>
+                    <li>Try refreshing the page</li>
+                    <li>Use a device with GPS (phones work best)</li>
+                    <li>Connect to WiFi for better accuracy</li>
+                </ol>
+                <p><em>Don't worry - we'll still send your name to Santa even without location! 🎅</em></p>
+            </div>
+        </details>
+    `;
+    
+    // Insert troubleshooting after the action div
+    document.querySelector('.action').appendChild(troubleshootingTips);
+    
+    // Christmas snow effect
     const snowContainer = document.createElement('div');
     snowContainer.style.cssText = `
         position: fixed;
@@ -262,6 +359,31 @@ document.addEventListener('DOMContentLoaded', function() {
         
         .fa-spinner {
             margin-right: 8px;
+        }
+        
+        .status-message.warning {
+            display: block;
+            background-color: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+        
+        .troubleshooting summary {
+            list-style: none;
+        }
+        
+        .troubleshooting summary::-webkit-details-marker {
+            display: none;
+        }
+        
+        .troubleshooting summary:after {
+            content: '▼';
+            float: right;
+            transition: transform 0.3s;
+        }
+        
+        .troubleshooting[open] summary:after {
+            transform: rotate(180deg);
         }
     `;
     document.head.appendChild(style);
