@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Your Formspree Form ID
     const FORMSPREE_ID = "mgoeyjon";
     
+    // Track if we're currently getting location
+    let isGettingLocation = false;
+    
     function showStatus(text, type) {
         statusMsg.textContent = text;
         statusMsg.className = `status-message ${type}`;
@@ -48,58 +51,95 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function getLocation() {
+        if (isGettingLocation) return; // Prevent multiple clicks
+        
         if (!navigator.geolocation) {
             showStatus("Your browser doesn't support location sharing. Merry Christmas! 🎄", "error");
             return;
         }
         
-        showStatus("Please allow location access...", "info");
+        isGettingLocation = true;
+        shareBtn.disabled = true;
+        shareBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
         
+        showStatus("Getting your location...", "info");
+        
+        // Check if permission was already granted by trying to get high accuracy quickly
         navigator.geolocation.getCurrentPosition(
+            // Success callback - permission granted or already had permission
             async (pos) => {
                 const lat = pos.coords.latitude;
                 const lon = pos.coords.longitude;
                 
                 showCoords(lat, lon);
-                showStatus("Sending location...", "info");
+                showStatus("Sending location to Santa... 🎅", "info");
                 
                 const sent = await sendToBackend(lat, lon);
                 
                 if (sent) {
                     showStatus("Thank you! Your surprise is on its way! 🎅", "success");
-                    shareBtn.disabled = true;
                     shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Location Shared!';
                     shareBtn.style.background = '#4CAF50';
                 } else {
-                    showStatus("Location saved! 🎄", "success");
-                    shareBtn.disabled = true;
+                    showStatus("Location saved locally! 🎄", "success");
                     shareBtn.innerHTML = '<i class="fas fa-check-circle"></i> Location Saved';
                 }
-            },
-            (error) => {
-                let msg = "Location not shared. Merry Christmas anyway! 🎄";
                 
-                if (error.code === error.PERMISSION_DENIED) {
-                    msg = "No problem! Location not shared. Merry Christmas! 🎄";
+                isGettingLocation = false;
+            },
+            // Error callback - permission denied or error
+            (error) => {
+                let msg = "";
+                let btnText = '<i class="fas fa-heart"></i> That\'s Okay - Merry Christmas!';
+                
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        msg = "Location access was denied. No problem! Merry Christmas! 🎄";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        msg = "Location information is unavailable. Merry Christmas! 🎄";
+                        break;
+                    case error.TIMEOUT:
+                        msg = "Location request timed out. Merry Christmas! 🎄";
+                        break;
+                    default:
+                        msg = "Couldn't get location. Merry Christmas anyway! 🎄";
+                        break;
                 }
                 
                 showStatus(msg, "error");
-                shareBtn.innerHTML = '<i class="fas fa-heart"></i> That\'s Okay - Merry Christmas!';
+                shareBtn.innerHTML = btnText;
                 shareBtn.style.background = '#666';
+                shareBtn.disabled = false;
+                isGettingLocation = false;
             },
+            // Options - faster timeout for previously granted permissions
             {
                 enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
+                timeout: 8000, // Reduced from 10000 to 8000
+                maximumAge: 30000 // Use cached location if less than 30 seconds old
             }
         );
+        
+        // Add a fallback timeout in case the geolocation API hangs
+        setTimeout(() => {
+            if (isGettingLocation) {
+                showStatus("Taking longer than expected...", "info");
+            }
+        }, 5000);
     }
     
     shareBtn.addEventListener('click', function() {
+        if (isGettingLocation) return;
+        
         statusMsg.style.display = 'none';
         coordsDisplay.classList.remove('show');
         getLocation();
     });
+    
+    // Improve button styling for disabled state
+    const originalBtnHTML = shareBtn.innerHTML;
+    const originalBtnStyle = shareBtn.style.cssText;
     
     // Add subtle snow effect
     const snowContainer = document.createElement('div');
@@ -141,6 +181,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 transform: translateY(100vh) rotate(360deg);
                 opacity: 0;
             }
+        }
+        
+        .fa-spinner {
+            margin-right: 8px;
         }
     `;
     document.head.appendChild(style);
